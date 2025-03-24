@@ -1,9 +1,12 @@
 #PP1@ project sem 24/25 Petr Florián - Binary Dungeon, a videogame for practicing binary - decimal conversions
+from turtledemo.penrose import start
 
 import pygame, random, asyncio
 from sys import exit
 from ast import literal_eval
 from json import dump
+from os import path
+from pygame_aseprite_animation import *
 
 def main_menu() -> None:
     pygame.init()
@@ -167,8 +170,9 @@ async def play_game():
     clock = pygame.time.Clock() #init clock to set FPS
     #create a list for monsters and asynchronous task to spawn monsters
     monsters:list = []
+    monster_sprites:list = []
     #asynchronous task to spawn monsters in given intervals
-    asyncio.create_task(spawn_monster(monsters, minSpeed=2, maxSpeed=6))
+    asyncio.create_task(spawn_monster(monsters, monster_sprites, minSpeed=2, maxSpeed=6))
 
     #colors
     WHITE = (255, 255, 255)
@@ -185,6 +189,8 @@ async def play_game():
 
     """TIMER_MAX = 6000
     timer = TIMER_MAX"""
+    test_animation = Animation('C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/skeletonMage.aseprite')
+    animationmanager = AnimationManager([test_animation], screen)
 
     # user input string init
     user_input = ""
@@ -220,7 +226,8 @@ async def play_game():
         # move and draw monsters cycle, end game condition
         for monster in monsters:
             monster["x"] += 1  #move monster on x-axis (adjust to adjust monster movement speed)
-            pygame.draw.circle(screen, (200, 0, 0), (monster["x"], monster["y"]), 20)
+            """pygame.draw.circle(screen, (200, 0, 0), (monster["x"], monster["y"]), 20)"""
+            animationmanager.update_self(monster["x"], monster["y"])
             #end game if monster reaches player
             if monster["x"] >= SCREEN_W-400:
                 print("GAME OVER OBRAZOVKA")
@@ -248,7 +255,8 @@ async def play_game():
         pygame.draw.rect(screen, RED, (50, 50, (SCREEN_W - 100) * (timer / TIMER_MAX), 20))
         pygame.draw.rect(screen, WHITE, (50, 50, SCREEN_W - 100, 20), 2)"""
 
-        print(f"DEBUG - monsters: {monsters}")
+        print(f"DEBUG (play_game) - monsters: {monsters}")
+        print(f"DEBUG (play_game) - sprites:  {monster_sprites}")
 
         pygame.display.flip()
         await asyncio.sleep(0) # yield process to the event loop
@@ -262,13 +270,31 @@ async def generate_monster(): #create and save to a FIFO collection
         #if correct guess access this monster in a list (FIFO) and delete. if not on time, K.O.
     }
 
-async def spawn_monster(monsters:list, minSpeed:float=8, maxSpeed:float=10):
+def choose_monster_sprite():
+    runSpriteSkeletonTuple = (
+        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/skeletonMage.aseprite',
+        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/skeleton.aseprite',
+        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/skeletonRogue.aseprite',
+        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/skeletonWarrior.aseprite'
+    )
+    runSpriteOrcTuple = (
+        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/orcShaman.aseprite',
+        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/orc.aseprite',
+        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/orcRogue.aseprite',
+        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/orcWarrior.aseprite'
+    )
+    runTuple = (runSpriteSkeletonTuple, runSpriteOrcTuple)
+    return random.choice(random.choice(runTuple))
+
+async def spawn_monster(monsters:list, monster_sprites:list, minSpeed:float=8, maxSpeed:float=10):
     while True:
         await asyncio.sleep(random.uniform(minSpeed, maxSpeed))
         # generate monster
         monster = await generate_monster()
         monsters.append(monster)
-        print("DEBUG - spawn_monster(): PRISERA VYGENEROVANA!")
+        # choose random monster sprite & append to sprite list
+        monster_sprites.append(choose_monster_sprite())
+        print("DEBUG - spawn_monster(): PRISERA VYGENEROVANA! - ", path.basename(monster_sprites[0]))
 
 def generate_problem(minRange: int = 1, maxRange: int = 64, mode: int =0):
     #Create a problem to solve
@@ -340,10 +366,10 @@ if __name__ == "__main__":
     settingsDict = load_settings()
     SCREEN_W = settingsDict["resolution_w"]
     SCREEN_H = settingsDict["resolution_h"]
+    charactersDir = str(path.dirname(__file__)) + "/Resources/characters/"
 
     #temp shi DEBUG
     print(f"DEBUG - Settings file contents:\n{settingsDict}")
-
     main_menu()
 
     """sprites from: https://anokolisa.itch.io/dungeon-crawler-pixel-art-asset-pack"""
