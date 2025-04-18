@@ -1,4 +1,6 @@
 #PP1@ project sem 24/25 Petr Florián - Binary Dungeon, a videogame for practicing binary - decimal conversions
+import time
+from operator import indexOf
 from turtledemo.penrose import start
 
 import pygame, random, asyncio
@@ -167,13 +169,19 @@ async def play_game():
     screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
     pygame.display.set_caption("Binary Dungeon")
 
+    bg_number = 4 #number of backgrounds i currently have ready with the name "BattlegroundX.png" where X is the number
+    background = pygame.image.load(f"Resources/backgrounds/Battleground{random.randint(1,bg_number)}.png")
+    background = pygame.transform.scale(background, (SCREEN_W, SCREEN_H))
+
     clock = pygame.time.Clock() #init clock to set FPS
     #create a list for monsters and asynchronous task to spawn monsters
     monsters:list = []
     monster_sprites:list = []
-    #asynchronous task to spawn monsters in given intervals
-    asyncio.create_task(spawn_monster(monsters, monster_sprites, minSpeed=2, maxSpeed=6))
+    animations:list = []
+    #asynchronous task to spawn monsters in given intervals - higher speed -> more time between spawns
+    asyncio.create_task(spawn_monster(monsters, monster_sprites, animations, screen, minSpeed=8, maxSpeed=10))
 
+    monster_speed = 0.8 #(adjust to adjust monster movement speed in pixels per loop update - 1 second)
     #colors
     WHITE = (255, 255, 255)
     BLACK = (0, 0, 0)
@@ -190,15 +198,15 @@ async def play_game():
     """TIMER_MAX = 6000
     timer = TIMER_MAX"""
     test_animation = Animation('C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/skeletonMage.aseprite')
-    animationmanager = AnimationManager([test_animation], screen)
 
+    testovanaanimace = AnimationManager([test_animation], screen) # test animace
     # user input string init
     user_input = ""
 
     # gamel oop
     running = True
     while running:
-        screen.fill(BLACK)
+        screen.blit(background, (0,0))
         # check for key input
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -211,9 +219,9 @@ async def play_game():
                         print("zabij nejbliižší monstrum a resetuj časovač")
                         monsters.pop(0)
                         """time.time()"""
+                        if monsters:  # if there are monsters in the list (on the screen)
+                            current_problem, correct_answer = generate_problem()  # generate a new problem
                     user_input = ""
-                    if monsters: # if there are monsters in the list (on the screen)
-                        current_problem, correct_answer = generate_problem() #generate a new problem
                 elif event.key == pygame.K_BACKSPACE:
                     user_input = user_input[:-1]
                 else:
@@ -224,12 +232,15 @@ async def play_game():
                         continue
 
         # move and draw monsters cycle, end game condition
-        for monster in monsters:
-            monster["x"] += 1  #move monster on x-axis (adjust to adjust monster movement speed)
+        for i, monster in enumerate(monsters):
+            monster["x"] += monster_speed  #move monster on x-axis (adjust to adjust monster movement speed)
             """pygame.draw.circle(screen, (200, 0, 0), (monster["x"], monster["y"]), 20)"""
-            animationmanager.update_self(monster["x"], monster["y"])
+            """ tohle appendovani musim udelat jindy - nesmim opakovat! update by mel byt snad v pohode
+            animations.append(AnimationManager([monster_sprites[monsters.index(monster)]], screen))"""
+            animations[i].update_self(monster["x"], monster["y"])
+
             #end game if monster reaches player
-            if monster["x"] >= SCREEN_W-400:
+            if monster["x"] >= SCREEN_W-450:
                 print("GAME OVER OBRAZOVKA")
                 running = False
                 game_over(screen, score)
@@ -265,36 +276,44 @@ async def play_game():
 async def generate_monster(): #create and save to a FIFO collection
     return {
         "x": -50,
-        "y": random.randint(100, SCREEN_H - 100),
+        "y": random.randint(int(SCREEN_H/2 + 100), SCREEN_H - 100)
         #"speed": random.uniform(0.8, 1.2)
         #if correct guess access this monster in a list (FIFO) and delete. if not on time, K.O.
     }
 
 def choose_monster_sprite():
     runSpriteSkeletonTuple = (
-        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/skeletonMage.aseprite',
-        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/skeleton.aseprite',
-        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/skeletonRogue.aseprite',
-        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/skeletonWarrior.aseprite'
+        'skeletonMage.aseprite',
+        'skeleton.aseprite',
+        'skeletonRogue.aseprite',
+        'skeletonWarrior.aseprite'
     )
     runSpriteOrcTuple = (
-        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/orcShaman.aseprite',
-        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/orc.aseprite',
-        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/orcRogue.aseprite',
-        'C:/Users/petrf/OneDrive/Plocha/BinaryDungeon/Resources/characters/run/orcWarrior.aseprite'
+        'orcShaman.aseprite',
+        'orc.aseprite',
+        'orcRogue.aseprite',
+        'orcWarrior.aseprite'
     )
     runTuple = (runSpriteSkeletonTuple, runSpriteOrcTuple)
     return random.choice(random.choice(runTuple))
 
-async def spawn_monster(monsters:list, monster_sprites:list, minSpeed:float=8, maxSpeed:float=10):
+def scaled_animation(modifier:float = 1.5): #allow custom animation scaling (default size: 64x64x32)
+    animace = Animation(charactersDir + 'run/' + choose_monster_sprite())
+    scaled_frames = []
+    for frame in animace.animation_frames:
+        scaled =pygame.transform.scale(frame, (frame.get_width()*modifier, frame.get_height()*modifier))
+        scaled_frames.append(scaled)
+    animace.animation_frames = scaled_frames
+    return animace
+
+async def spawn_monster(monsters:list, monster_sprites:list, animations:list, screen, minSpeed:float=8, maxSpeed:float=10):
     while True:
-        await asyncio.sleep(random.uniform(minSpeed, maxSpeed))
+        await asyncio.sleep(random.uniform(minSpeed, maxSpeed)) #higher number -> more time between spawns)
         # generate monster
         monster = await generate_monster()
         monsters.append(monster)
-        # choose random monster sprite & append to sprite list
-        monster_sprites.append(choose_monster_sprite())
-        print("DEBUG - spawn_monster(): PRISERA VYGENEROVANA! - ", path.basename(monster_sprites[0]))
+        animations.append(AnimationManager([scaled_animation()], screen))
+        print("DEBUG - spawn_monster(): PRISERA VYGENEROVANA! - ", path.basename(str(monsters[0])))
 
 def generate_problem(minRange: int = 1, maxRange: int = 64, mode: int =0):
     #Create a problem to solve
@@ -345,7 +364,6 @@ def game_over(screen, score):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_m:
                     waiting = False
-                    main_menu()
 
 def load_settings():
     #Read the .json file dedicated to various game settings, store the file in a string, convert the string to a dictionary and return the dictionary
@@ -367,9 +385,9 @@ if __name__ == "__main__":
     SCREEN_W = settingsDict["resolution_w"]
     SCREEN_H = settingsDict["resolution_h"]
     charactersDir = str(path.dirname(__file__)) + "/Resources/characters/"
+    animations:list = [] #musi byt zde - v play neappenduje z spawn fce!
 
     #temp shi DEBUG
     print(f"DEBUG - Settings file contents:\n{settingsDict}")
     main_menu()
-
     """sprites from: https://anokolisa.itch.io/dungeon-crawler-pixel-art-asset-pack"""
