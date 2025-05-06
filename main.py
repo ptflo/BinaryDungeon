@@ -3,11 +3,12 @@ import time
 from operator import indexOf
 from turtledemo.penrose import start
 
-import pygame, random, asyncio
+import pygame, random, asyncio, pygame_gui
 from sys import exit
 from ast import literal_eval
 from json import dump
-from os import path
+from os import path, listdir
+from pathlib import Path
 from pygame_aseprite_animation import *
 
 def main_menu() -> None:
@@ -27,7 +28,7 @@ def main_menu() -> None:
     #load bg location and transform it to fit resolution
     BACKGROUND = pygame.image.load("Resources/backgrounds/main_menu.jpg")
     BACKGROUND = pygame.transform.scale(BACKGROUND, (SCREEN_W, SCREEN_H))
-    MENU_TEXT = get_font(100).render("HLAVNÍ NABÍDKA", True, "#D7B498")
+    MENU_TEXT = get_font(100, True).render("HLAVNÍ NABÍDKA", True, "#D7B498")
 
     #button pathing & loading
     #buttons handmade by me using https://www.pixilart.com/draw
@@ -107,12 +108,18 @@ def settings_menu(screen, background, settings):
     overlay = pygame.Surface((screen.get_width(), screen.get_height()), pygame.SRCALPHA)
     overlay.blit(background, (0,0))
 
-    SETTINGS_TEXT = get_font(100).render("NASTAVENÍ", True, "#D7B498")
+    SETTINGS_TEXT = get_font(100, True).render("NASTAVENÍ", True, "#D7B498")
 
     # volume slider
-    VOLUME_TEXT = get_font(30).render("HLASITOST: ", True, "#D7B498")
-    volume_bar = pygame.Rect(SCREEN_W/2-150, 230, 300, 20,)
+    VOLUME_TEXT = get_font(30, True).render("HLASITOST: ", True, "#D7B498")
+    volume_bar = pygame.Rect(SCREEN_W/2-150, 230, 300, 20)
     volume_handle = pygame.Rect(SCREEN_W/2-150 + settings["volume"] * 300, 220, 20, 40)
+
+    ui_manager = pygame_gui.UIManager((SCREEN_W, SCREEN_H))
+    dropdown = pygame_gui.elements.UIDropDownMenu(options_list=["pixelify.ttf", "NishikiTeki.ttf"], #get_file_names idealne
+                                                  starting_option=settingsDict["font"],
+                                                  relative_rect=pygame.Rect(SCREEN_W/2-150, 330, 300, 20),
+                                                  manager=ui_manager)
 
     button_back = pygame.image.load("Resources/buttons/back.png")
     button_back_hover = pygame.image.load("Resources/buttons/back_hover.png")
@@ -125,6 +132,7 @@ def settings_menu(screen, background, settings):
     running = True
     while running:
         screen.blit(overlay, (0, 0))
+        ui_manager.draw_ui(screen)
         screen.blit(SETTINGS_TEXT, SETTINGS_TEXT.get_rect(center=((SCREEN_W/2), (SCREEN_H/6))))
         screen.blit(VOLUME_TEXT, VOLUME_TEXT.get_rect(center=((SCREEN_W / 2), 200)))
 
@@ -158,7 +166,14 @@ def settings_menu(screen, background, settings):
                     pygame.mixer.music.set_volume(settings["volume"])
                     volume_handle.x = volume_bar.x + settings["volume"] * volume_bar.width
 
+            ui_manager.process_events(event)
+
+            if event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED and event.ui_element == dropdown:
+                selected_font = dropdown.selected_option[0]
+                settingsDict["font"] = selected_font
+
         pygame.display.flip()
+        ui_manager.update(60)
 
     with open("Resources/settings/settings.json", "w") as f:
         dump(settings, f)
@@ -375,9 +390,14 @@ def load_settings():
         settingsString = f.read()
     return literal_eval(settingsString) #converts type string to type dictionary
 
-def get_font(size:int):
+def get_font(size:int, interface = False):
     #load the font from settings and return it with the specified size from the parameter
+    if interface:
+        return pygame.font.Font(f"Resources/fonts/{settingsDict["interface_font"]}",size)
     return pygame.font.Font(f"Resources/fonts/{settingsDict["font"]}",size)
+
+def get_file_names(folder_path, format = ".ttf"):
+    return [f.name for f in Path(folder_path).glob(format)]
 
 if __name__ == "__main__":
     #GLOBAL VARIABLES
