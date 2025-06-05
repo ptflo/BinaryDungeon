@@ -1,4 +1,4 @@
-#PP1@ project sem 24/25 Petr Florián - Binary Dungeon, a videogame for practicing binary - decimal conversions
+#TVS@ project sem 24/25 Petr Florián - Binary Dungeon, a videogame for practicing binary - decimal conversions
 import time
 from operator import indexOf
 from turtledemo.penrose import start
@@ -115,11 +115,12 @@ def settings_menu(screen, background, settings):
     volume_bar = pygame.Rect(SCREEN_W/2-150, 230, 300, 20)
     volume_handle = pygame.Rect(SCREEN_W/2-150 + settings["volume"] * 300, 220, 20, 40)
 
-    ui_manager = pygame_gui.UIManager((SCREEN_W, SCREEN_H))
-    dropdown = pygame_gui.elements.UIDropDownMenu(options_list=["pixelify.ttf", "NishikiTeki.ttf"], #get_file_names idealne
+    ui_manager = pygame_gui.UIManager((SCREEN_W, SCREEN_H), "Resources/themes/theme.json")
+    dropdown = pygame_gui.elements.UIDropDownMenu(options_list=[f for f in listdir("Resources/fonts") if f.endswith(".ttf")],
                                                   starting_option=settingsDict["font"],
-                                                  relative_rect=pygame.Rect(SCREEN_W/2-150, 330, 300, 20),
-                                                  manager=ui_manager)
+                                                  relative_rect=pygame.Rect(SCREEN_W/2-150, 280, 300, 30),
+                                                  manager=ui_manager,
+                                                  object_id="#settings_dropdown")
 
     button_back = pygame.image.load("Resources/buttons/back.png")
     button_back_hover = pygame.image.load("Resources/buttons/back_hover.png")
@@ -169,7 +170,7 @@ def settings_menu(screen, background, settings):
             ui_manager.process_events(event)
 
             if event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED and event.ui_element == dropdown:
-                selected_font = dropdown.selected_option[0]
+                selected_font = dropdown.selected_option[0] #[0] because selected_option fsr returns tuple of duplicate strings
                 settingsDict["font"] = selected_font
 
         pygame.display.flip()
@@ -232,10 +233,10 @@ async def play_game():
                     if user_input == correct_answer:
                         score += 1
                         print("zabij nejbliižší monstrum a resetuj časovač")
-                        monsters.pop(0)
                         """time.time()"""
                         if monsters:  # if there are monsters in the list (on the screen)
-                            current_problem, correct_answer = generate_problem()  # generate a new problem
+                            monsters.pop(0)
+                        current_problem, correct_answer = generate_problem()  # generate a new problem
                     user_input = ""
                 elif event.key == pygame.K_BACKSPACE:
                     user_input = user_input[:-1]
@@ -395,9 +396,6 @@ def get_font(size:int, interface = False):
     if interface:
         return pygame.font.Font(f"Resources/fonts/{settingsDict["interface_font"]}",size)
     return pygame.font.Font(f"Resources/fonts/{settingsDict["font"]}",size)
-
-def get_file_names(folder_path, format = ".ttf"):
-    return [f.name for f in Path(folder_path).glob(format)]
 
 if __name__ == "__main__":
     #GLOBAL VARIABLES
